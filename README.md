@@ -116,3 +116,29 @@ Sauvegarder automatiquement le fichier /srv/mboamarket/data/commandes.csv toutes
 - `printf '%s\n' 'TX-95615' > ~/incident-paiement.txt` : écrit uniquement le numéro demandé dans le fichier de preuve.
 - `cat ~/incident-paiement.txt` : vérifie son contenu.
 
+## OPS-206 — Le disque se remplit
+
+### Diagnostic
+- `df -h /srv/mboamarket/exports` : indique 2,4 Go utilisés sur le système de fichiers.
+- `sudo du -ah /srv/mboamarket/exports | sort -h | tail -n 20` : identifie le fichier caché `2026-03/.tmp/rapport annuel (copie).csv`, qui occupe environ 300 Mio.
+- `sudo find /srv/mboamarket/exports -type f | wc -l` : compte 1501 fichiers avant intervention.
+
+### Correction
+- `sudo rm -- "/srv/mboamarket/exports/2026-03/.tmp/rapport annuel (copie).csv"` : supprime uniquement le fichier coupable. Les guillemets protègent les espaces et les parenthèses.
+- Après suppression, du indique 6 Mo, mais df ne montre pas encore de baisse.
+- `sudo lsof +L1` : révèle que mboa-indexeur, PID 12106, garde le fichier supprimé ouvert.
+- `sudo systemctl restart mboa-indexeur` : relance le service pour fermer le fichier et libérer son espace disque.
+
+### Pourquoi df et du différaient
+du mesure les fichiers accessibles dans le dossier. Après suppression, il ne comptait plus le fichier. df mesure les blocs occupés sur tout le système de fichiers : ceux du fichier supprimé restaient occupés tant que l’indexeur le gardait ouvert.
+
+### Vérifications
+- `systemctl is-active mboa-indexeur` : retourne active.
+- `sudo lsof +L1` : ne retourne plus aucun fichier supprimé ouvert.
+- `df -h /srv/mboamarket/exports` : l’espace utilisé passe de 2,4 Go à 2,1 Go.
+- `sudo du -sh /srv/mboamarket/exports` : retourne 6,0 Mo.
+- `sudo find /srv/mboamarket/exports -type f | wc -l` : confirme que les 1500 exports sont conservés.
+
+## Validation finale du TP 2
+
+
