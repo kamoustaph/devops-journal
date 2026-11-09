@@ -71,3 +71,38 @@ Puis :
 - `curl http://127.0.0.1:8080/sante` : retourne OK Mboa Market API.
 
 Bilan : les deux chemins incorrects ont été corrigés. L’API fonctionne sous mboa et son démarrage automatique est activé.
+
+## OPS-204 — Sauvegarde toutes les 5 minutes
+
+### Objectif
+Sauvegarder automatiquement le fichier /srv/mboamarket/data/commandes.csv toutes les 5 minutes et conserver une trace de chaque exécution.
+
+### Script
+- `sudo nano /usr/local/bin/mboa-sauvegarde` : crée le script de sauvegarde.
+- Le script utilise `mkdir -p` pour créer /var/backups/mboamarket si nécessaire.
+- `date +%Y%m%d-%H%M` : produit la date utilisée dans le nom commandes-AAAAMMJJ-HHMM.csv.
+- `cp` : copie le fichier source vers la sauvegarde datée.
+- `echo` : affiche un message de réussite, récupéré dans le journal systemd.
+- `set -eu` : arrête le script en cas d’erreur ou de variable non définie.
+- `umask 077` : réserve les nouveaux fichiers au propriétaire.
+- `sudo chown root:root /usr/local/bin/mboa-sauvegarde` : attribue le script à root.
+- `sudo chmod 750 /usr/local/bin/mboa-sauvegarde` : autorise son exécution par root et sa lecture/exécution par le groupe root.
+
+### Service et timer
+- `sudo nano /etc/systemd/system/mboa-sauvegarde.service` : crée le service Type=oneshot qui lance le script puis se termine.
+- `systemd-analyze calendar '*-*-* *:00/5:00'` : vérifie le calendrier toutes les 5 minutes.
+- `sudo nano /etc/systemd/system/mboa-sauvegarde.timer` : configure le déclenchement avec OnCalendar=*-*-* *:00/5:00 et AccuracySec=1s.
+- `sudo systemctl daemon-reload` : recharge les fichiers de configuration systemd.
+- `sudo systemctl enable --now mboa-sauvegarde.timer` : active le timer immédiatement et au démarrage.
+- `sudo systemctl start mboa-sauvegarde.service` : teste une sauvegarde manuellement.
+
+### Vérifications et résultats
+- `systemctl is-active mboa-sauvegarde.timer` : retourne active.
+- `systemctl is-enabled mboa-sauvegarde.timer` : retourne enabled.
+- `systemctl list-timers --all mboa-sauvegarde.timer --no-pager` : confirme un passage à 17:20 puis le suivant à 17:25, le 9 novembre 2026.
+- `sudo systemctl status mboa-sauvegarde.service --no-pager -l` : indique status=0/SUCCESS. L’état inactive (dead) est normal après la fin d’un service oneshot.
+- `sudo journalctl -u mboa-sauvegarde.service -n 20 --no-pager` : montre les messages de sauvegarde de l’exécution manuelle à 17:18 et automatique à 17:20.
+- `sudo ls -l /var/backups/mboamarket` : confirme la présence des deux copies datées, avec les permissions 600.
+- `sudo cmp /srv/mboamarket/data/commandes.csv /var/backups/mboamarket/commandes-20261109-1720.csv` : confirme que la copie est identique à la source.
+
+Bilan : la sauvegarde fonctionne automatiquement toutes les 5 minutes, avec une trace dans le journal. Les critères d’OPS-204 sont remplis.
