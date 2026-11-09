@@ -103,6 +103,16 @@ Sauvegarder automatiquement le fichier /srv/mboamarket/data/commandes.csv toutes
 - `sudo systemctl status mboa-sauvegarde.service --no-pager -l` : indique status=0/SUCCESS. L’état inactive (dead) est normal après la fin d’un service oneshot.
 - `sudo journalctl -u mboa-sauvegarde.service -n 20 --no-pager` : montre les messages de sauvegarde de l’exécution manuelle à 17:18 et automatique à 17:20.
 - `sudo ls -l /var/backups/mboamarket` : confirme la présence des deux copies datées, avec les permissions 600.
-- `sudo cmp /srv/mboamarket/data/commandes.csv /var/backups/mboamarket/commandes-20261109-1720.csv` : confirme que la copie est identique à la source.
+- `sudo cmp /srv/mboamarket/data/commandes.csv /var/backups/mboamarket/commandes-20261109-1720.csv` : confirme que la copie est identique
 
-Bilan : la sauvegarde fonctionne automatiquement toutes les 5 minutes, avec une trace dans le journal. Les critères d’OPS-204 sont remplis.
+
+## OPS-205 — Transaction en échec
+
+- `sudo journalctl -t mboa-paiement --no-pager -o short-iso` : consulte les messages du module de paiement.
+- `sudo journalctl -t mboa-paiement -p err..err --no-pager -o short-iso` : sélectionne uniquement les messages de priorité erreur.
+- Transaction identifiée : TX-95615.
+- Date et heure : 7 novembre 2026 à 17:58:51 (+01:00).
+- Cause signalée : absence de réponse du prestataire de paiement après 30 secondes. Le débit du client reste à confirmer.
+- `printf '%s\n' 'TX-95615' > ~/incident-paiement.txt` : écrit uniquement le numéro demandé dans le fichier de preuve.
+- `cat ~/incident-paiement.txt` : vérifie son contenu.
+
