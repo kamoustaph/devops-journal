@@ -40,3 +40,34 @@ Objectif : installer htop pour observer les processus et ncdu pour analyser l’
 - `dpkg -s htop ncdu | grep -E '^(Package|Status):'` : vérifie l’état des deux paquets.
 
 Résultat : htop et ncdu affichent tous les deux « install ok installed >>
+
+## OPS-203 — L’API ne démarre plus
+
+### Diagnostic et corrections
+
+- `systemctl status mboa-api` : constate que le service est en échec avec le code 203/EXEC.
+- `sudo journalctl -u mboa-api` : consulte les messages d’erreur du service.
+- `sudo systemctl cat mboa-api` : affiche sa configuration.
+- `ls -l /usr/bin/python /usr/bin/python3` : confirme que python est absent et que python3 existe.
+- `sudo nano /etc/systemd/system/mboa-api.service` : corrige ExecStart en `/usr/bin/python3 api.py`.
+- Après rechargement et relance, le journal montre l’erreur 200/CHDIR : le dossier de travail n’existe pas.
+- Une seconde modification remplace `/srv/mboamarket/ap` par `/srv/mboamarket/app` dans WorkingDirectory.
+
+### Relance et activation
+
+Après chaque modification :
+- `sudo systemctl daemon-reload` : recharge la configuration des services.
+- `sudo systemctl reset-failed mboa-api` : remet à zéro le compteur des échecs.
+- `sudo systemctl restart mboa-api` : relance l’API.
+
+Puis :
+- `sudo systemctl enable mboa-api` : active le service au démarrage de la machine.
+
+### Vérifications
+
+- `systemctl is-active mboa-api` : retourne active.
+- `systemctl is-enabled mboa-api` : retourne enabled.
+- `ps -p "$(systemctl show mboa-api -p MainPID --value)" -o pid,user,args` : confirme que Python tourne sous mboa.
+- `curl http://127.0.0.1:8080/sante` : retourne OK Mboa Market API.
+
+Bilan : les deux chemins incorrects ont été corrigés. L’API fonctionne sous mboa et son démarrage automatique est activé.
