@@ -28,3 +28,15 @@
 ### Vérification
 - Avant l’arrêt, les charges moyennes sur 1 et 5 minutes étaient de 0,99 et 0,77.
 - Après l’arrêt, elles sont descendues à 0,02 et 0,35.
+
+## OPS-202 — Les outils de l’équipe
+
+Objectif : installer htop pour observer les processus et ncdu pour analyser l’espace disque.
+
+- `sudo apt update` : actualise la liste des paquets disponibles.
+- `sudo apt install htop ncdu` : installe les deux outils d’observation.
+- `dpkg -L ncdu` : affiche les fichiers installés par le paquet ncdu.
+- `dpkg -L ncdu | grep '/bin/ncdu$'` : retrouve le binaire ncdu, installé dans /usr/bin/ncdu.
+- `dpkg -s htop ncdu | grep -E '^(Package|Status):'` : vérifie l’état des deux paquets.
+
+Résultat : htop et ncdu affichent tous les deux « install ok installed >>
